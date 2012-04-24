@@ -13,13 +13,16 @@
   * http://www.0j0.org | http://arduino.berlios.de
   * copyleft 2005 DojoDave for DojoCorp
   */
+  int buzzerPin = 40;
+
  int ledPin = 13;
- int joyPin1 = 0;                 // slider variable connecetd to analog pin 0
- int joyPin2 = 1;                 // slider variable connecetd to analog pin 1
+ int joyPin1 = 2;                 // slider variable connecetd to analog pin 0
+ int joyPin2 = 3;                 // slider variable connecetd to analog pin 1
  int value1 = 0;                  // variable to read the value from the analog pin 0
  int value2 = 0;                  // variable to read the value from the analog pin 1
  void setup() {
   pinMode(ledPin, OUTPUT);              // initializes digital pins 0 to 7 as outputs
+  pinMode(buzzerPin, OUTPUT);
   Serial.begin(9600);
  }
  int treatValue(int data) {
@@ -37,6 +40,9 @@
   delay(value1);
   digitalWrite(ledPin, LOW);
   delay(value2);
+  //  digitalWrite(buzzerPin, HIGH);
+  delay(1000);
+  //  digitalWrite(buzzerPin, LOW);
   Serial.write('J');
 Serial.write(treatValue(value1));
  Serial.write(treatValue(value2));
