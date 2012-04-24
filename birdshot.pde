@@ -9,6 +9,8 @@
 
 #include <math.h>
 
+#define unconnected_pin 7
+
   int buzzerPin = 40;
 
  int ledPin = 13;
@@ -20,10 +22,21 @@ int r_y_pin = 1;
  int value1 = 0;                  // variable to read the value from the analog pin 0
  int value2 = 0;                  // variable to read the value from the analog pin 1
 
+#define width 4
+#define height 4
+int birds[width][height] = {
+    {10, 11, 12, 13},
+    {25, 24, 23, 22},
+    {6, 7, 8, 9},
+    {2, 3, 4, 5}
+};
+
 int x_1;
 int y_1;
 int r_x_1;
 int r_y_1;
+
+int up = 2;
 
 void setup() {
   pinMode(ledPin, OUTPUT);              // initializes digital pins 0 to 7 as outputs
@@ -35,11 +48,20 @@ void setup() {
 
   x_1 = analogRead(joyPin1);   
   y_1 = analogRead(joyPin2);
-}
 
- int treatValue(int data) {
-  return (data * 9 / 1024) + 48;
- }
+  int j;
+
+  for (j=0; j < 4; ++j) {
+      pinMode(birds[0][j], OUTPUT);     
+      digitalWrite(birds[0][j], HIGH);
+      delay(100);
+      digitalWrite(birds[0][j], LOW);
+      delay(100);
+  }
+
+  randomSeed(analogRead(unconnected_pin));
+  up = random(0, 4);
+}
 
 int low_x = 1000;
 int low_y = 1000;
@@ -76,22 +98,21 @@ typedef double Real;
 
 // TARGET
 // 0 1 2 3
-int target;
-int up = 2;
+int target = -1;
+int up_state = HIGH;
+unsigned long downtime;
+
+#define MAX_WAIT 2000 // ms
 
 void loop() {
-  // reads the value of the variable resistor 
-  int x = analogRead(joyPin1);   
-  delay(100);			  
-  // this small pause is needed between reading
-  // analog pins, otherwise we get the same value twice
-  // reads the value of the variable resistor 
-  int y = analogRead(joyPin2);   
-
-  delay(100);
   int r_x = analogRead(r_x_pin);
-  delay(00);
   int r_y = analogRead(r_y_pin);
+
+  if (up_state == LOW && (millis() - downtime) > MAX_WAIT) {
+      up_state = HIGH;
+      up = random(0, 4);
+  }
+  digitalWrite(birds[0][up], up_state);
 
   if (r_x > 700) {
       if (r_y > r_y_left) {
@@ -114,47 +135,19 @@ void loop() {
       }
       Serial.print(target);
       Serial.print("\n");
-      if (target == up) {
+      if (target == up && up_state == HIGH) {
 	  digitalWrite(buzzerPin, HIGH);
       } else {
 	  digitalWrite(buzzerPin, LOW);
       }
   } else {
       digitalWrite(buzzerPin, LOW);
+      if (target == up) {
+	  up_state = LOW;
+	  downtime = millis();
+      }
+      target = -1;
   }
-  return;
-
-  Serial.print(x);
-  Serial.print("\t");
-  Serial.print(y);
-
-  Real x_delta = (Real)(x - x_0) / (Real)(x_max - x_0);
-  Real y_delta = (Real)(y - y_0) / (Real)(y_max - y_0);
-  Real angle = atan(y_delta/x_delta);
-  Real degrees = angle * 180.0 / 3.14159265;
-
-  //  if (degrees > 0) { return; }
-  degrees += 90;
-
-  if (x < low_x) {
-      low_x = x;
-  } else if (x > hi_x) {
-      hi_x = x;
-  }
-  if (y < low_y) {
-      low_y = y;
-  }
-  if (y > hi_y) {
-      hi_y = y;
-  }
-  //  (y > hi_y)? hi_y = y:;
-
-  Serial.print("x: "); Serial.print(low_x); Serial.print('-');
-  Serial.print(hi_x);
-  Serial.print(" y: "); Serial.print(low_y); Serial.print('-');
-  Serial.print(hi_y);
-  Serial.write(10);
-
   return;
 
   // tan = o / a = x / y
@@ -179,3 +172,8 @@ void loop() {
   
       //  }
  }
+
+int treatValue(int data) {
+    return (data * 9 / 1024) + 48;
+}
+
