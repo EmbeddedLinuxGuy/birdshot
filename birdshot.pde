@@ -37,6 +37,46 @@ int r_x_1;
 int r_y_1;
 
 int up = 2;
+#define max_shape_size 6
+typedef struct {
+    int x;
+    int y;
+    bool up;
+} Shape;
+
+Shape shape[max_shape_size];
+int shape_count = -1; // how many are left
+int shape_size = -1; // size of this shape
+
+int shots = -1;
+
+void make_shape() {
+    int j;
+    Serial.print("Generating shape...\n");
+    shape_count = random(2, max_shape_size);
+    shape_size = shape_count;
+    shots = shape_count + 3;
+    for (j = 0; j < shape_count; ) {
+	shape[j].x = random(0, 4);
+	shape[j].y = random(0, 4);
+	//	Serial.print(shape[j].x); Serial.print(" ");
+	//Serial.print(shape[j].y); Serial.print("\n");
+	bool redo = false;
+	int i;
+	for (i = 0; i < j; ++i) {
+	    if (shape[i].x == shape[j].x && shape[i].y == shape[j].y) {
+		redo = true;
+		break;
+	    }
+	}
+	if (! redo) {
+	    shape[j].up = true;
+	    Serial.print(shape[j].x); Serial.print(" ");
+	    Serial.print(shape[j].y); Serial.print("\n");
+	    ++j;
+	}
+    }
+}
 
 void setup() {
   pinMode(ledPin, OUTPUT);              // initializes digital pins 0 to 7 as outputs
@@ -49,18 +89,20 @@ void setup() {
   x_1 = analogRead(joyPin1);   
   y_1 = analogRead(joyPin2);
 
-  int j;
-
-  for (j=0; j < 4; ++j) {
-      pinMode(birds[0][j], OUTPUT);     
-      digitalWrite(birds[0][j], HIGH);
-      delay(100);
-      digitalWrite(birds[0][j], LOW);
-      delay(100);
+  int x;
+  int y;
+  for (x=0; x < 4; ++x) {
+      for (y=0; y < 4; ++y) {
+	  pinMode(birds[x][y], OUTPUT);     
+	  digitalWrite(birds[x][y], HIGH);
+	  delay(100);
+	  digitalWrite(birds[x][y], LOW);
+	  delay(100);
+      }
   }
 
   randomSeed(analogRead(unconnected_pin));
-  up = random(0, 4);
+  make_shape();
 }
 
 int low_x = 1000;
@@ -104,15 +146,43 @@ unsigned long downtime;
 
 #define MAX_WAIT 2000 // ms
 
+int found_target = -1;
 void loop() {
   int r_x = analogRead(r_x_pin);
   int r_y = analogRead(r_y_pin);
 
-  if (up_state == LOW && (millis() - downtime) > MAX_WAIT) {
-      up_state = HIGH;
-      up = random(0, 4);
+  bool any_up = false;
+  int j;
+  for (j = 0; j < shape_size; ++j) {
+      digitalWrite(birds[shape[j].x][shape[j].y], shape[j].up ? HIGH : LOW);
+      //digitalWrite(birds[shape[j].x][shape[j].y], HIGH);
+      if (shape[j].up) {
+	  any_up = true;
+	  //	  Serial.print(shape[j].x);
+	  //	  Serial.print(",");
+	  //	  Serial.print(shape[j].y);
+	  //	  Serial.print(" ");
+      }
   }
-  digitalWrite(birds[0][up], up_state);
+  //  Serial.print("\n");
+
+  if (shots <= 0) {
+      int x;
+      int y;
+      for (x=0; x < 4; ++x) {
+	  for (y=0; y < 4; ++y) {
+	      pinMode(birds[x][y], OUTPUT);     
+	      digitalWrite(birds[x][y], HIGH);
+	      delay(100);
+	      digitalWrite(birds[x][y], LOW);
+	      delay(10);
+	  }
+      }
+
+  }
+  if ((!any_up) || (shots <= 0)) {
+      make_shape();
+  }
 
   if (r_x > 700) {
       if (r_y > r_y_left) {
@@ -133,19 +203,40 @@ void loop() {
 	      target = 1;
 	  }
       }
-      Serial.print(target);
-      Serial.print("\n");
-      if (target == up && up_state == HIGH) {
-	  digitalWrite(buzzerPin, HIGH);
-      } else {
-	  digitalWrite(buzzerPin, LOW);
+      //      Serial.print(target);
+
+      bool on_target = false;
+      for (j=0; j < shape_size; ++j) {
+	  if (shape[j].up && shape[j].y == target) {
+	      digitalWrite(buzzerPin, HIGH);
+	      found_target = j;
+	      on_target = true;
+	      //	      Serial.print(" FOUND");
+	  }
       }
+      if (! on_target) {
+	  digitalWrite(buzzerPin, LOW);
+	  found_target = -1;
+      }
+      //      Serial.print("\n");
   } else {
       digitalWrite(buzzerPin, LOW);
-      if (target == up) {
-	  up_state = LOW;
-	  downtime = millis();
+      if (target >= 0) {
+	  if (shots > 0) { --shots; }
+	  Serial.print(shots);
+	  Serial.print(" shots.\n");
       }
+      if (found_target >= 0 && shape[found_target].up) {
+	  shape[found_target].up = false;
+#if 0
+      	  shape_count--;
+	  if (shape_count < 0) {
+	      downtime = millis();
+	      up_state = LOW;
+	  }
+#endif
+      }
+      found_target = -1;
       target = -1;
   }
   return;
