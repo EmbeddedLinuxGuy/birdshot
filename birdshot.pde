@@ -3,6 +3,8 @@
  * Reads two analog pins that are supposed to be
  * connected to a jostick made of two potentiometers
  * 
+ * embedded linux guy - gmail - com
+ *
  * Read Jostick copyleft 2005 DojoDave for DojoCorp
  * http://www.0j0.org | http://arduino.berlios.de
  */
@@ -179,7 +181,22 @@ void loop() {
 	  }
       }
 
+  } else if (!any_up) {
+      int x;
+      int y;
+      for (x=0; x < 4; ++x) {
+	  for (y=0; y < 4; ++y) {
+	      pinMode(birds[x][y], OUTPUT);     
+	      digitalWrite(birds[x][y], HIGH);
+	      delay(100);
+	  }
+	  for (y=0; y < 4; ++y) {
+	      digitalWrite(birds[x][y], LOW);
+	      delay(10);
+	  }
+      }
   }
+
   if ((!any_up) || (shots <= 0)) {
       make_shape();
   }
